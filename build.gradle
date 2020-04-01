@@ -1,78 +1,107 @@
 buildscript {
     repositories {
+        mavenLocal()
+        maven { url = 'http://files.minecraftforge.net/maven' }
         jcenter()
-        maven { url = "http://files.minecraftforge.net/maven" }
+        mavenCentral()
+        maven {
+            url 'https://dogforce-games.com/maven'
+        }
+        maven {
+            name = "sonatype"
+            url = "https://oss.sonatype.org/content/repositories/snapshots/"
+        }
     }
     dependencies {
-        classpath 'net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT'
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '3.0.165-run-configs-rework', changing: true
     }
 }
-apply plugin: 'net.minecraftforge.gradle.forge'
+apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'maven-publish'
+apply plugin: 'eclipse'
 
-version = "1.12.2-0.0.0.1"
-group = "noobanidus.mods.katusleep"
+version = "${minecraft_version}-${mod_version}"
+group = "noobanidus.mods"
 archivesBaseName = "katusleep"
 
-sourceCompatibility = targetCompatibility = "1.8"
-
-compileJava {
-    sourceCompatibility = targetCompatibility = "1.8"
-    options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
-}
+sourceCompatibility = '1.8'
+targetCompatibility = '1.8'
 
 minecraft {
-    version = "1.12.2-14.23.5.2847"
-    runDir = "run"
-    mappings = "stable_39"
-    useDepAts = true
+    mappings channel: 'snapshot', version: "${mcp_mappings}"
 
-    replace "GRADLE:VERSION", project.version
+    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+
+    runs {
+        client {
+            taskName 'runClient'
+
+            workingDirectory project.file('run')
+
+            //property 'forge.logging.markers', 'CORE,REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                katusleep {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        server {
+            taskName 'runServer'
+
+            workingDirectory project.file('run')
+
+            //property 'forge.logging.markers', 'CORE,REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                katusleep {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        data {
+            taskName 'runData'
+
+            workingDirectory project.file('run')
+
+            environment 'target', 'fmluserdevdata'
+
+            //property 'forge.logging.markers', 'CORE,REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                katusleep {
+                    source sourceSets.main
+                }
+            }
+
+            args '--mod', 'katusleep', '--all', '--output', '"' + rootProject.file('src/generated/resources/') + '"',
+                    '--existing', '"' + rootProject.file('src/main/resources') + '"'//, '--existing', '"' + rootProject.file('src/generated/resources') + '"'
+
+        }
+    }
+}
+
+sourceSets.main.resources {
+    srcDir 'src/generated/resources'
 }
 
 repositories {
     maven {
-        name = "CurseForge"
-        url = "https://minecraft.curseforge.com/api/maven/"
+        url "https://maven.blamejared.com"
     }
     maven {
-        url "https://maven.mcmoddev.com/"
+        url "http://maven.tterrag.com/"
+    }
+    maven { // JEI
+        url "http://dvs1.progwml6.com/files/maven"
     }
 }
 
 dependencies {
-    compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.11.1'
-    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.11.1'
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 }
-
-processResources {
-    inputs.property "version", project.version
-    inputs.property "mcversion", project.minecraft.version
-
-    from(sourceSets.main.resources.srcDirs) {
-        include "mcmod.info"
-
-        expand "version": project.version, "mc_version": project.minecraft.version
-    }
-
-    from(sourceSets.main.resources.srcDirs) {
-        exclude "mcmod.info"
-    }
-
-    rename '(.+at\\.cfg)', 'META-INF/$1'
-}
-
-task deobfJar (type: Jar) {
-    from sourceSets.main.output
-    classifier = "deobf"
-}
-
-jar {
-    manifest {
-        //attributes 'FMLAT': 'fzkk_at.cfg'
-    }
-}
-
-artifacts {
-    archives deobfJar
-}
-
